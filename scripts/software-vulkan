@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Opt-in correctness runs with Mesa lavapipe. Run inside `nix develop` on NixOS.
+set -euo pipefail
+architecture="$(uname -m)"
+lemma_icd="${LEMMA_SOFTWARE_ICD:-}"
+if [[ -z "$lemma_icd" ]]; then
+  for candidate in "/run/opengl-driver/share/vulkan/icd.d/lvp_icd.$architecture.json" "/usr/share/vulkan/icd.d/lvp_icd.$architecture.json" "/usr/share/vulkan/icd.d/lvp_icd.json"; do
+    if [[ -f "$candidate" ]]; then lemma_icd="$candidate"; break; fi
+  done
+fi
+if [[ -z "$lemma_icd" || ! -f "$lemma_icd" ]]; then
+  echo 'No Mesa lavapipe ICD found. Set LEMMA_SOFTWARE_ICD to its JSON path.' >&2
+  exit 1
+fi
+if (( $# == 0 )); then
+  echo 'Usage: scripts/software-vulkan COMMAND [ARGS...]' >&2
+  exit 1
+fi
+export VK_DRIVER_FILES="$lemma_icd"
+export VK_ICD_FILENAMES="$lemma_icd"
+exec "$@"

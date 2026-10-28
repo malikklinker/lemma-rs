@@ -1,0 +1,7 @@
+/target/
+/out/
+/.lemma-cache/
+/node_modules/
+/authoring/node_modules/
+/authoring/dist/
+*.tmp
