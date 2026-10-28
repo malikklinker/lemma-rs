@@ -1,0 +1,21 @@
+{
+  "name": "@lemma/authoring",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./authoring/index.ts",
+    "./jsx-runtime": "./authoring/jsx-runtime.ts"
+  },
+  "scripts": {
+    "scene": "node authoring/cli.mjs build",
+    "watch": "node authoring/cli.mjs watch",
+    "inspect": "node authoring/cli.mjs inspect",
+    "render": "node authoring/cli.mjs render",
+    "preview": "node authoring/cli.mjs preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test authoring/test/*.test.mjs"
+  },
+  "devDependencies": { "esbuild": "^0.27.0", "typescript": "^5.9.0" },
+  "engines": { "node": ">=22" }
+}
