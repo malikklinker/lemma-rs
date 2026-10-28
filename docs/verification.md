@@ -1,5 +1,38 @@
 # Reproducible verification
 
+## 2026-10-28 negative glyph bearing fix
+
+Text layout now translates glyph bounds into the padded texture before computing
+its extent. This preserves negative left bearings and marks extending above the
+line box for screen text, projected labels, world text, and preview controls.
+Compilation/evaluation and rendering use the same translated extent.
+
+The new CPU regression failed on the original implementation, then passed for
+`J`, `j`, mixed runs, ordinary text, and combining marks at 12, 40, 256, and 512
+pixels. The opt-in GPU contract independently rasterizes `J` and `j` at 256
+pixels and verifies that every covered pixel survives rendering, with sRGB
+coverage values within one byte of the reference.
+
+Verification passed: `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings`,
+all 32 library tests, 15 CPU integration tests, the immutability doctest, and the
+complete opt-in GPU suite. Cargo used `--locked --offline` and the existing
+restricted-environment cache. Reproduce the rendered checks with:
+
+```sh
+LEMMA_GPU_ALLOW_SOFTWARE=1 scripts/software-vulkan \
+  cargo test --locked --test gpu_contracts -- --ignored --nocapture
+```
+
+The actual adapter was Vulkan llvmpipe (LLVM 21.1.8, 256 bits), driver llvmpipe,
+Mesa 26.1.8 / LLVM 21.1.8, a software CPU device with 4x MSAA. The loader path
+from the earlier environment record below was supplied explicitly. No hardware
+throughput was measured.
+
+Visually inspected `out/text-bearing-fix/before.png` and `after.png` at 640x384:
+the restored left strokes of `J`/`j` and standalone combining acute accent are
+visible; ordinary `MMMM` text retains its placement and appearance. The generated
+scene and PNGs remain under ignored `out/text-bearing-fix/`.
+
 ## 2026-10-28 integration pass
 
 The PR preparation pass passed formatting, Clippy with warnings denied, 31 Rust

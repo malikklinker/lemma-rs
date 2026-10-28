@@ -157,6 +157,57 @@ fn text_alpha(renderer: &mut Renderer, readbacks: &mut Readbacks) -> Result<()> 
     Ok(())
 }
 
+fn negative_glyph_bearings(renderer: &mut Renderer, readbacks: &mut Readbacks) -> Result<()> {
+    let font = fontdue::Font::from_bytes(
+        include_bytes!("../assets/DejaVuSans.ttf") as &[u8],
+        fontdue::FontSettings::default(),
+    )
+    .unwrap();
+    for character in ['J', 'j'] {
+        let (metrics, bitmap) = font.rasterize(character, 256.0);
+        assert!(metrics.xmin < -1, "fixture must have a negative bearing");
+        let mut scene = empty_scene();
+        scene.size = [192, 352];
+        scene.background = [0.0, 0.0, 0.0, 1.0];
+        scene.nodes.push(NodeSpec::Text {
+            id: "negative-bearing".into(),
+            text: character.to_string(),
+            position: [16.0, 16.0],
+            font_size: 256.0,
+            color: [1.0; 4],
+            opacity: 1.0.into(),
+        });
+        let pixels = readbacks.render(renderer, &packet(scene)?)?;
+        // White over black converts glyph coverage directly to sRGB. Compare
+        // every covered pixel, independent of the glyph's placement/padding.
+        let mut expected: Vec<_> = bitmap
+            .into_iter()
+            .filter(|&coverage| coverage > 0)
+            .map(|coverage| linear_to_srgb_byte(f32::from(coverage) / 255.0))
+            .collect();
+        let mut actual: Vec<_> = pixels
+            .chunks_exact(4)
+            .map(|pixel| pixel[0])
+            .filter(|&coverage| coverage > 2)
+            .collect();
+        assert_eq!(
+            actual.len(),
+            expected.len(),
+            "{character}: clipped glyph coverage"
+        );
+        expected.sort_unstable();
+        actual.sort_unstable();
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(
+                actual.abs_diff(expected) <= 1,
+                "{character}: changed glyph coverage"
+            );
+        }
+    }
+    println!("PASS negative glyph bearings: J/j preserve every rasterized coverage pixel");
+    Ok(())
+}
+
 fn field_scene() -> SceneSpec {
     let reference = lemma::reference::scene();
     let mut scene = empty_scene();
@@ -704,6 +755,7 @@ fn rendered_gpu_contracts() -> Result<()> {
     let mut readbacks = Readbacks::default();
     srgb_background(&mut renderer, &mut readbacks)?;
     text_alpha(&mut renderer, &mut readbacks)?;
+    negative_glyph_bearings(&mut renderer, &mut readbacks)?;
     opaque_depth_and_labels(&mut renderer, &mut readbacks)?;
     spatial_strokes(&mut renderer, &mut readbacks)?;
     extreme_coordinate_strokes(&mut renderer, &mut readbacks)?;

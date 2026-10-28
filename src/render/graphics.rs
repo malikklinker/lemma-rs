@@ -142,14 +142,14 @@ impl Graphics {
         if self.textures.contains_key(&key) {
             return Ok(key);
         }
-        let (layout, [width, height]) = crate::text::layout(text, font_size)?;
+        let (glyphs, [width, height]) = crate::text::layout(text, font_size)?;
         let limit = device.limits().max_texture_dimension_2d;
         ensure!(
             width <= limit && height <= limit && u64::from(width) * u64::from(height) <= 16_777_216,
             "text texture {width}x{height} is too large; split the text into smaller runs"
         );
         let mut pixels = vec![0; (width * height) as usize];
-        for glyph in layout.glyphs() {
+        for glyph in &glyphs {
             let (_, bitmap) = crate::text::font().rasterize_config(glyph.key);
             for y in 0..glyph.height {
                 for x in 0..glyph.width {
